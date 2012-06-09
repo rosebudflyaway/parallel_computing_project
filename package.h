@@ -1,0 +1,185 @@
+#ifndef PACKAGE_H
+#define PACKAGE_H
+
+#include "Globals.h"
+#include "body.h"
+#include "vector3.h"
+#include <boost/mpi.hpp>
+#include <boost/mpi/environment.hpp>
+#include <boost/mpi/communicator.hpp>
+#include <boost/serialization/vector.hpp>
+#include <boost/serialization/map.hpp>
+#include "item.h"
+typedef map<int,Body> domain;
+namespace mpi = boost::mpi;
+
+template <typename T>
+class Package
+{
+    private:
+        friend class boost::serialization::access;
+        template<class Archive>
+            void serialize(Archive & ar, const unsigned int version)
+            {
+                ar & send_msg;
+                ar & recv_msg;
+                ar & rk;
+                ar & neighbors;
+            }
+        map<int,T > send_msg; // id is the process to which the item must be sent
+        map<int,T > recv_msg; // int is the rank the message recieved from
+        int rk;
+        int maxrank; // max rank
+        vector<int> neighbors; // all the neighbors of the current rank
+        void initialize_send();
+        void remove_dummy();
+        void prepare_send(domain &items,const boost::mpi::communicator &world); // for each item add it to the corresponding Item
+        void vprepare_send(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world);
+        void prepare_recv(const map<int,T> &items);
+        void merge(T &total_msg);
+    public:
+        Package(int rank,int max); // max is the size of the world
+        void send(domain &items,const boost::mpi::communicator &world); 
+        void vsend(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world);
+        void recv(const boost::mpi::communicator &world,T &total_msg);
+        void print();
+        void cleanup();
+
+};
+
+template<typename T>
+Package<T>::Package(int rank,int max)
+{
+    maxrank = max;
+    rk = rank;
+    // add the neighbors to the vector
+    if(rk+1 < max)
+        neighbors.push_back(rk+1);
+    if(rk-1 >= 0)
+        neighbors.push_back(rk-1);
+}
+
+template<typename T>
+void Package<T>::initialize_send()
+{
+    // add dummy messages to all the neighbors
+    tr(neighbors,it)
+    {
+        send_msg[*it].add_dummy();
+    }
+}
+
+template<typename T>
+void Package<T>::remove_dummy()
+{
+    // remove dummy messages to all the neighbors
+    tr(neighbors,it)
+    {
+        recv_msg[*it].remove_dummy();
+    }
+}
+
+template<>
+void Package<Item<Body> >::prepare_send(domain &items,const boost::mpi::communicator &world)
+{
+    // scan each item and add it to the correct destination
+    float y;
+    double rad;
+    tr(items,it)
+    {
+        // decide the destination of this item
+        y = (it->second).get_y();
+        rad = (it->second).get_rad();
+        if(y+rad > rk+1 && rk+1<maxrank)
+            send_msg[rk+1].add_item(it->first,it->second);
+        else if(y-rad< rk && rk-1 >=0)
+            send_msg[rk-1].add_item(it->first,it->second);
+    }
+    // now send the messages
+    this->initialize_send();  // add dummy to make sure the message sent is not a NULL message
+    tr(send_msg,it)
+    {
+        world.send(it->first,0,it->second);  // world.send(destination, tag, message)
+    }
+}
+
+template<>
+void Package<Item<vector3> >::vprepare_send(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world)
+{
+    // scan each item and add it to the correct destination
+    int dest;
+    tr(vecs,it)
+    {
+        dest = returnids[it->first];  // returnids is a map, the first one is the id, the second one is the dest
+        if(dest!=rk) // if the return id is not same as the current one
+        send_msg[dest].add_item(it->first,it->second);
+    }
+    // now send the messages
+    this->initialize_send();
+    tr(send_msg,it)
+    {
+        world.send(it->first,0,it->second);
+    }
+}
+
+template<>
+void Package<Item<vector3> >::vsend(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world)
+{
+    send_msg.clear();  // the map<int, T>
+    this->vprepare_send(vecs,returnids,world);
+}
+
+template<>
+void Package<Item<Body> >::send(domain &items,const boost::mpi::communicator &world)
+{
+    send_msg.clear();
+    this->prepare_send(items,world);
+}
+
+template<typename T>
+void Package<T>::recv(const boost::mpi::communicator &world, T &total_msg)
+{
+    // recv messages from the neighbors
+    mpi::request req[neighbors.size()];
+    REP(i,0,neighbors.size())
+    {
+        req[i] = world.irecv(neighbors[i],0,recv_msg[neighbors[i]]);
+    }
+    mpi::wait_all(req,req+neighbors.size());  // wait for all  the requests in a single line
+    remove_dummy();
+    merge(total_msg);
+}
+
+template <typename T>
+void Package<T>::merge(T &total_msg)
+{
+    tr(recv_msg,it)
+    {
+        total_msg.merge(it->second); // it->first is the rank from which to recive the message
+    }
+}
+
+template<typename T>
+void Package<T>::print()
+{
+    tr(send_msg,it)
+    {
+        cout<<" to rank "<<it->first<<endl;  // the it->first is the rank
+        (it->second).print();
+    }
+    tr(recv_msg,it)
+    {
+        cout<<" from rank "<<it->first<<endl;
+        (it->second).print();
+    }
+}
+
+template<typename T>
+void Package<T>::cleanup()
+{
+    send_msg.clear();
+    recv_msg.clear();
+}
+
+
+#endif
