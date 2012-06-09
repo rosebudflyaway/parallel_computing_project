@@ -1,0 +1,22 @@
+MCC = mpic++ -I ~/Downloads/boost_1_49_0
+CC = g++
+SOURCE = rigid.cpp Globals.cpp TimeTracker.cpp
+HEADER = Globals.h TimeTracker.h
+LIBRARY = -Llibdir /usr/lib/libboost_mpi.so /usr/lib/libboost_serialization.so
+OBJ = rigid.o Globals.o TimeTracker.o
+EXEC = rigid
+
+build : $(OBJ)
+	$(MCC) -o $(EXEC) $(OBJ) $(LIBRARY)
+
+rigid.o : $(SOURCE) $(HEADER)
+	$(MCC) -c rigid.cpp 
+
+Globals.o : Globals.cpp Globals.h
+	$(CC) -c Globals.cpp
+
+TimeTracker.o : TimeTracker.cpp TimeTracker.h
+	$(CC) -c TimeTracker.cpp
+
+clean :
+	rm -f *.o
