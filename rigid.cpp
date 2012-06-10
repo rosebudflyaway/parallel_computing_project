@@ -66,18 +66,18 @@ int main(int argc,char *argv[])
 {
     // ********************************* Varaibles **************************** //
     int myrank,nprocs;
-    domain mydomain; // all the bodies in the current rank's domain..it is mergeed with the bodies received from the neighbors and the solver is called.
-    Item<Body> idomain; // an item object to hold the spheres
-    Item<Body> msg; // bodies received from the neighbors
-    Item<vector3> force; // force of the local bodies
-    Item<vector3> vmsg; // vector msg from the neighbors
-    int max_number; // max number of spheres that are present in each rank before pruning i.e number if retain = 1
-    mii returnids; // the destination of the spheres to send the computed the forces
-    mii stat;      // whether there are send or recv
+    domain mydomain;             // all the bodies in the current rank's domain..it is mergeed with the bodies received from the neighbors and the solver is called.
+    Item<Body> idomain;          // an item object to hold the spheres
+    Item<Body> msg;              // bodies received from the neighbors
+    Item<vector3> force;         // force of the local bodies
+    Item<vector3> vmsg;          // vector msg from the neighbors
+    int max_number;              // max number of spheres that are present in each rank before pruning i.e number if retain = 1
+    mii returnids;               // the destination of the spheres to send the computed the forces
+    mii stat;                    // whether there are send or recv
     mpi::environment env(argc, argv);
     mpi::communicator world;
-    Stat st;  // to write out the statistics
-    Tracker trk(2670000000); // stores the times for various operations
+    Stat st;                     // to write out the statistics
+    Tracker trk(2070000000);     // stores the times for various operations
 
 
     // ******************************* Initialization ************************* //

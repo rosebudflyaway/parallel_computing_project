@@ -6,9 +6,19 @@
 typedef std::map<int,Body> domain; //  all the balls in the current processor
 typedef std::vector<vector3> vv3;
 
+double compute_psi(Body &b1, Body &b2)
+{
+    double psi;
+    vector3 diff = b1.get_position()-b2.get_position();
+	double dist = diff.norml();
+	psi = dist-(b1.get_rad() + b2.get_rad());
+    return psi;
+    //std::cout<<" \n psi is "<<psi<<std::endl;
+}
+
 void find_contact(domain &bodies,vector<pair<int,int> > &allcontacts)
 {
-	vector3 pos1, pos2,diff;
+	vector3 pos1, pos2, diff;
     int id1,id2;
     tr(bodies,it)
 	{
@@ -16,29 +26,24 @@ void find_contact(domain &bodies,vector<pair<int,int> > &allcontacts)
 		{
             id1 = it->first;
             id2 = it2->first;
-            if(id1<id2)
+            // make sure that the same sphere will not collide with itself
+            if(id1<id2) 
             {
                 pos1 = (it->second).get_position();
                 pos2 = (it2->second).get_position();
                 diff = pos1 - pos2;
-                if(diff.norml() - ( (it->second).get_rad() + (it2->second).get_rad() ) < 1E-6)
+                //if(diff.norml() - ( (it->second).get_rad() + (it2->second).get_rad() ) < 1E-2)
+                if((compute_psi(it->second, it2->second)) < 1E-2)
                 {
                     //	psi.push_back(dist - radius*2);
+                    //	ii <==> pair<int, int>
                     allcontacts.push_back(ii((it->second).get_id(),(it2->second).get_id()));
                 }
             }
-
         }
 	}
 }
 
-void compute_psi(Body &b1, Body &b2, double &psi)
-{
-    vector3 diff = b1.get_position()-b2.get_position();
-	double dist = diff.norml();
-	psi = dist-(b1.get_rad() + b2.get_rad());
-    //std::cout<<" \n psi is "<<psi<<std::endl;
-}
 void construct_mass(Body &b1,Body &b2,vd &mass)
 {
     double m1,i1,m2,i2;
@@ -111,7 +116,6 @@ bool converged(const double &a, const double &b,double ep=1E-03)
 double iterative_step(double psi,const vd &gn,const vd &ext,const vd &vel)
 {
     // initialize pnPlusOne
-    // TODO : pnPlusOne is a double not a vector of doubles
     double prev=-1; // this is the value that will be returned when the iteration converges
     double temp=0;
     while(true)
@@ -137,7 +141,7 @@ vector3 pair_solver(Body &b1,Body &b2)
     construct_ext(b1,b2,ext);
     construct_vel(b1,b2,vel);
     construct_gn(b1,b2,gn);
-    compute_psi(b1,b2,psi);
+    psi = compute_psi(b1,b2);
     pnPlusOne = iterative_step(psi,gn,ext,vel);
     //cout<<"pnPlusOne is "<<pnPlusOne<<endl;
     return vector3(pnPlusOne*gn[0],pnPlusOne*gn[1],pnPlusOne*gn[2]);

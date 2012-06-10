@@ -16,6 +16,8 @@ void print_vd(const vd& x)
     }
     cout<<endl<<"------------------"<<endl;
 }
+
+// this is to print vector<vector <int> >
 void print_vvi(const vvi& x)
 {
     tr(x,it)
@@ -32,10 +34,13 @@ float RangeFloat(float min, float max)
     return (random*range) + min;
 }
 
+// pair<int, int>
 void print_ii(const ii& x)
 {
     cout << "(" << x.first<< "," << x.second << ")" << endl;
 }
+
+// vector <pair<int, int> >
 void print_vii(const vii& x)
 {
     tr(x,it)
