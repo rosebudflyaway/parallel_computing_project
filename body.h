@@ -53,6 +53,11 @@ class Body
         {
             velocity = velocity + f;
         }
+        void zero_vel()
+        {
+            velocity = vector3(0,0,0);
+        }
+
         void add_pos(const vector3 &f)
         {
             position = position + f;

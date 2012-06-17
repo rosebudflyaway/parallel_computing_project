@@ -5,6 +5,7 @@
 #include "body.h"
 #include "Globals.h"
 
+// this function is used to generate one sphere and push back to mydomain
 void one_sphere(vector<Body> &mydomain, double radius, int rank,int boundary)
 {
     // X range for the center of the sphere : 0 to p-1
@@ -41,12 +42,16 @@ void prune_layers(vector<Body> &mydomain,float factor)
     mydomain.erase(mydomain.begin()+retain,mydomain.end());
 }
 
+// domain is filled with mydomain
 void fill_domain(vector<Body> &bodies, map<int,Body> &domain)
 {
     // fill the vector of bodies in the map along with the id
     tr(bodies,it)
     {
-        domain.insert(make_pair(it->get_id(),Body(*it)));
+        // initially, forced change type to Body(*it), actually it doesn't need to 
+        // since *it itself is a Body type
+        //domain.insert(make_pair(it->get_id(),Body(*it)));
+        domain.insert(make_pair(it->get_id(),*it));
     }
 }
 
@@ -65,6 +70,7 @@ void fill_layers(map<int,Body> &mydomain,double r,int rank,int boundary,int star
         {
             for(float i=r;i<boundary-r;i+=2*r) // x coordinate
             {
+                // the constructor with position, id, and radius
                 bodies.push_back(Body(vector3(i,j,k),id,r));
                 id++;
                 //std::cout<<i<<","<<j<<","<<k<<std::endl;

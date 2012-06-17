@@ -3,8 +3,14 @@
 
 #include "Globals.h"
 #include "body.h"
+#include<string>
+#include<fstream>
+
 typedef std::map<int,Body> domain; //  all the balls in the current processor
 typedef std::vector<vector3> vv3;
+
+//ofstream myfile ("contacts.txt");
+
 
 double compute_psi(Body &b1, Body &b2)
 {
@@ -35,9 +41,10 @@ void find_contact(domain &bodies,vector<pair<int,int> > &allcontacts)
                 //if(diff.norml() - ( (it->second).get_rad() + (it2->second).get_rad() ) < 1E-2)
                 if((compute_psi(it->second, it2->second)) < 1E-2)
                 {
-                    //	psi.push_back(dist - radius*2);
                     //	ii <==> pair<int, int>
                     allcontacts.push_back(ii((it->second).get_id(),(it2->second).get_id()));
+                    ofstream myfile ("contacts1.txt");
+                    myfile << allcontacts.size() << endl;
                 }
             }
         }
@@ -74,10 +81,13 @@ void construct_gn(Body &b1,Body &b2,vd &gn)
 
 void construct_ext(Body &b1,Body &b2,vd &ext)
 {
+    // for the pair solver, the Pext is a vector of dimension 12
+    // first 6 elements are the force and torque of the body 1 in contact
+    // second 6 elements are the force and torque of the body 1 in contact
 	vector3 ext1, ext2;
 	ext1 = b1.get_ext();
 	ext2 = b2.get_ext();
-	REP(i,0,3) {ext.push_back(ext1[i]);     }
+	REP(i,0,3) {ext.push_back(ext1[i]);    }
 	REP(i,0,3) {ext.push_back(0);          }
 	REP(i,0,3) {ext.push_back(ext2[i]);    }
 	REP(i,0,3) {ext.push_back(0);          }
@@ -97,7 +107,9 @@ void construct_vel(Body &b1,Body &b2,vd &vel)
     //print_vd(vel);
 }
 
-double inner_factor(const vd &gn, const vd &ext, const vd &vel,double pPlusOne)
+
+// this is to calculate the inner factor in the fix_point iteration method
+double inner_factor(const vd &gn, const vd &ext, const vd &vel, double pPlusOne)
 {
     double ret=0;
     REP(i,0,gn.size())
@@ -107,13 +119,14 @@ double inner_factor(const vd &gn, const vd &ext, const vd &vel,double pPlusOne)
     return ret;
 }
 
-bool converged(const double &a, const double &b,double ep=1E-03)
+
+bool converged(const double &a, const double &b, double ep=1E-03)
 {
     double diff = a-b;
     diff = diff>0 ? diff : -1*diff;
     return diff < ep;
 }
-double iterative_step(double psi,const vd &gn,const vd &ext,const vd &vel)
+double iterative_step(double psi, const vd &gn, const vd &ext, const vd &vel)
 {
     // initialize pnPlusOne
     double prev=-1; // this is the value that will be returned when the iteration converges
@@ -125,7 +138,7 @@ double iterative_step(double psi,const vd &gn,const vd &ext,const vd &vel)
         if(temp<0)
             temp=0;
         if(converged(temp,prev))
-            return temp;
+            return temp;  // by return, the while loop will end by itself
         prev = temp;
     }
 }
@@ -151,9 +164,9 @@ void total_force(const map<int,vv3> &table,map<int,vector3> &force)
     vector3 f(0.0,0.0,0.0);
     tr(table,it)
     {
-        tr(it->second,itt)
+        tr(it->second,it2)
         {
-            f+=(*itt);
+            f+=(*it2);
         }
         force.insert( make_pair<int, vector3 >(it->first, f) );
     }
@@ -161,7 +174,7 @@ void total_force(const map<int,vv3> &table,map<int,vector3> &force)
 
 void initialize_table(domain &mybodies, map<int,vv3> &table)
 {
-    vector3 f(0.0,0.09,-0.00000098);
+    vector3 f(0.0,0.0,-0.00000098); // the initial gravity force and horizontal force
     tr(mybodies,it)
     {
         //table.insert(make_pair(it->first,f));
@@ -178,6 +191,10 @@ void solve(domain &bodies,map<int,vector3> &force,mii &return_ids)
     vector<pair<int,int > > contacts;
     initialize_table(bodies,table);
     find_contact(bodies,contacts);
+
+    ofstream my_file ("contacts.txt");
+    my_file << contacts.size() << endl;
+
     tr(contacts,it)
     {
        gnpn = pair_solver(bodies[it->first],bodies[it->second]);
@@ -186,11 +203,11 @@ void solve(domain &bodies,map<int,vector3> &force,mii &return_ids)
     }
     // 
     total_force(table,force);
-    int dest;
+   // int dest;
     tr(table,it)
     {
         //cout<<bodies[it->first].get_y()<<" , " << floor(bodies[it->first].get_y())<<endl;
-        // determine the 
+        // pair<bodyID, the rank the body is in>
         return_ids.insert(make_pair(it->first,floor(bodies[it->first].get_y())));
     }
 }

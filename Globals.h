@@ -43,4 +43,5 @@ void print_vvi(const vvi& x);
 
 float RangeFloat(float min, float max);
 
+//ofstream myfile ("contacts.txt");
 #endif

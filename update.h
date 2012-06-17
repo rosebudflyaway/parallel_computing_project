@@ -4,11 +4,21 @@
 
 void update_vel(Body &b,const vector3 f)
 {
-    b.add_vel(f);
+    if(b.get_z() <= 0)
+    {
+        b.zero_vel();
+    }
+    else
+    {
+        b.add_vel(f);
+    }
 }
 void update_pos(Body &b,const vector3 f)
 {
-    b.add_pos(f);
+    if(b.get_z() > 0)
+    {
+        b.add_pos(f);
+    }
 }
 void update_all_velocity(Item<Body> &mydomain, const Item<vector3> finalforce)
 {
@@ -23,7 +33,7 @@ void update_all_velocity(Item<Body> &mydomain, const Item<vector3> finalforce)
 }
 
 
-void manage_bodies(Item<Body> &mydomain, Item<Body> &msg,int rank)
+void manage_bodies(Item<Body> &mydomain, Item<Body> &msg, int rank)
 {
     // for bodies in mydomain remove if the center crosses the boundary
     map<int,Body>::iterator it = mydomain.item.begin();

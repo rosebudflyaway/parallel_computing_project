@@ -26,9 +26,9 @@ class Package
                 ar & rk;
                 ar & neighbors;
             }
-        map<int,T > send_msg; // id is the process to which the item must be sent
+        map<int,T > send_msg; // int is the rank to which the item must be sent
         map<int,T > recv_msg; // int is the rank the message recieved from
-        int rk;
+        int rk;  // rank
         int maxrank; // max rank
         vector<int> neighbors; // all the neighbors of the current rank
         void initialize_send();
@@ -37,38 +37,46 @@ class Package
         void vprepare_send(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world);
         void prepare_recv(const map<int,T> &items);
         void merge(T &total_msg);
+
     public:
         Package(int rank,int max); // max is the size of the world
-        void send(domain &items,const boost::mpi::communicator &world); 
-        void vsend(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world);
-        void recv(const boost::mpi::communicator &world,T &total_msg);
+        void send(domain &items, const boost::mpi::communicator &world); 
+        void vsend(const map<int,vector3> &vecs, mii &returnids, const boost::mpi::communicator &world);
+        void recv(const boost::mpi::communicator &world, T &total_msg);
         void print();
         void cleanup();
-
 };
 
+// initialize: to find the two neighbors 
 template<typename T>
 Package<T>::Package(int rank,int max)
 {
     maxrank = max;
     rk = rank;
-    // add the neighbors to the vector
+    // add the two neighbors to the vector
     if(rk+1 < max)
         neighbors.push_back(rk+1);
     if(rk-1 >= 0)
         neighbors.push_back(rk-1);
 }
 
+
+// add a dummy message before sending
 template<typename T>
 void Package<T>::initialize_send()
 {
     // add dummy messages to all the neighbors
     tr(neighbors,it)
     {
+        // T.add_dummy();
+        // no define function of add_dummy()
+        // but here T is something of class Item,
+        // so  the add_dummy() is defined there
         send_msg[*it].add_dummy();
     }
 }
 
+// remove the dummy message after receiving
 template<typename T>
 void Package<T>::remove_dummy()
 {
@@ -79,8 +87,10 @@ void Package<T>::remove_dummy()
     }
 }
 
+
+// prepare to send the body before calling the solver
 template<>
-void Package<Item<Body> >::prepare_send(domain &items,const boost::mpi::communicator &world)
+void Package<Item<Body> >::prepare_send(domain &items, const boost::mpi::communicator &world)
 {
     // scan each item and add it to the correct destination
     float y;
@@ -103,6 +113,7 @@ void Package<Item<Body> >::prepare_send(domain &items,const boost::mpi::communic
     }
 }
 
+// prepare to send the vector3 force after calling the solver 
 template<>
 void Package<Item<vector3> >::vprepare_send(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world)
 {
@@ -122,6 +133,8 @@ void Package<Item<vector3> >::vprepare_send(const map<int,vector3> &vecs, mii &r
     }
 }
 
+// send the vector3 force after calling the solver
+// every time before sending, we will clear the vector3 force from last time step
 template<>
 void Package<Item<vector3> >::vsend(const map<int,vector3> &vecs, mii &returnids,const boost::mpi::communicator &world)
 {
@@ -129,6 +142,9 @@ void Package<Item<vector3> >::vsend(const map<int,vector3> &vecs, mii &returnids
     this->vprepare_send(vecs,returnids,world);
 }
 
+
+// send the Body before calling the solver
+// every time before sending, we will clear the map of Body from last time step
 template<>
 void Package<Item<Body> >::send(domain &items,const boost::mpi::communicator &world)
 {
@@ -136,6 +152,8 @@ void Package<Item<Body> >::send(domain &items,const boost::mpi::communicator &wo
     this->prepare_send(items,world);
 }
 
+
+// recv the map of Body and the vector3 force from the destination processor
 template<typename T>
 void Package<T>::recv(const boost::mpi::communicator &world, T &total_msg)
 {
@@ -155,6 +173,8 @@ void Package<T>::merge(T &total_msg)
 {
     tr(recv_msg,it)
     {
+        // for it->second, it is a type of IteTyp
+        //
         total_msg.merge(it->second); // it->first is the rank from which to recive the message
     }
 }

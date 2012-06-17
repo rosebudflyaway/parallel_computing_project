@@ -32,7 +32,7 @@ void cross_boundary(map<int,Body> &domain, mii &stat,int myrank)
     // Iterate over each body in the vector and copy if it crosses the boundary
     tr(domain,it)
     {
-        stat.insert(make_pair( (it->second).get_id(),status(it->second,myrank)));
+        stat.insert(make_pair( (it->second).get_id(),status(it->second,myrank)));  // here status() is the function defined above
     }
 }
 

@@ -18,15 +18,18 @@
 #include "update.h"
 #include "statistics.h"
 #include "TimeTracker.h"
-
+#include <fstream>
 typedef std::map<int,Body> domain; //  key is the unique id of the ball and the value is the body object
 
 namespace mpi = boost::mpi;
+
 
 float retain; // number of spheres per processor initially
 double radius; // radius of each sphere
 int iterations; // number of iterations of the entire simulation
 bool print=false;
+
+//ofstream myfile("contacts.txt");
 
 void print_usage(char *prog) 
 {
@@ -66,11 +69,11 @@ int main(int argc,char *argv[])
 {
     // ********************************* Varaibles **************************** //
     int myrank,nprocs;
-    domain mydomain;             // all the bodies in the current rank's domain..it is mergeed with the bodies received from the neighbors and the solver is called.
+    domain mydomain;             // all the bodies in the current rank's domain is called mydomain..it is mergeed with the bodies received from the neighbors and the solver is called.
     Item<Body> idomain;          // an item object to hold the spheres
     Item<Body> msg;              // bodies received from the neighbors
     Item<vector3> force;         // force of the local bodies
-    Item<vector3> vmsg;          // vector msg from the neighbors
+    Item<vector3> vmsg;          // force in form of vector msg from the neighbors
     int max_number;              // max number of spheres that are present in each rank before pruning i.e number if retain = 1
     mii returnids;               // the destination of the spheres to send the computed the forces
     mii stat;                    // whether there are send or recv
@@ -78,7 +81,6 @@ int main(int argc,char *argv[])
     mpi::communicator world;
     Stat st;                     // to write out the statistics
     Tracker trk(2070000000);     // stores the times for various operations
-
 
     // ******************************* Initialization ************************* //
     parse_args(argc,argv);
@@ -104,8 +106,8 @@ int main(int argc,char *argv[])
     {
         // 0 )  append the positions of the bodies
         st.append_position(idomain.item);  // position is a map of map<int, vector<vector3> >
+       
         // 1 ) send the spheres that cross the domain to the corresponding rank
-
         trk.start("send");
         pck.send(idomain.item,world);
         trk.end("send");

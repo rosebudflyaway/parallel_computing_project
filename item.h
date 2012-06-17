@@ -23,7 +23,9 @@ class Item
             }
     public:
         map<int,ItmTyp> item;
+        // the constructor: to construct an object
         Item(){}
+
         Item(const map<int,ItmTyp> &init)   // (id, body)  && (id, force)
         {
             item.insert(all(init));
